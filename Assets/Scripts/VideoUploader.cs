@@ -1,5 +1,6 @@
 using OpenCVForUnity.CoreModule;
 using OpenCVForUnity.ImgprocModule;
+using OpenCVForUnity.ObjdetectModule;
 using OpenCVForUnity.UnityUtils;
 using OpenCVForUnity.VideoioModule;
 using System;
@@ -16,6 +17,11 @@ public class VideoUploader : MonoBehaviour
     bool isPlaying = false;
     bool shouldUpdateVideoFrame = false;
     public string videoFileName;
+
+    private HOGDescriptor hogDescriptor;
+    private MatOfRect humans;
+    private MatOfDouble weights;
+    private Size winStride;
 
     // Start is called before the first frame update
     void Start()
@@ -35,20 +41,26 @@ public class VideoUploader : MonoBehaviour
             Debug.LogError(videoFileName + " is not opened. Please move to “Assets/StreamingAssets/” folder.");
         }
 
-        Debug.Log("CAP_PROP_FORMAT: " + capture.get(Videoio.CAP_PROP_FORMAT));
-        Debug.Log("CAP_PROP_POS_MSEC: " + capture.get(Videoio.CAP_PROP_POS_MSEC));
-        Debug.Log("CAP_PROP_POS_FRAMES: " + capture.get(Videoio.CAP_PROP_POS_FRAMES));
-        Debug.Log("CAP_PROP_POS_AVI_RATIO: " + capture.get(Videoio.CAP_PROP_POS_AVI_RATIO));
-        Debug.Log("CAP_PROP_FRAME_COUNT: " + capture.get(Videoio.CAP_PROP_FRAME_COUNT));
-        Debug.Log("CAP_PROP_FPS: " + capture.get(Videoio.CAP_PROP_FPS));
-        Debug.Log("CAP_PROP_FRAME_WIDTH: " + capture.get(Videoio.CAP_PROP_FRAME_WIDTH));
-        Debug.Log("CAP_PROP_FRAME_HEIGHT: " + capture.get(Videoio.CAP_PROP_FRAME_HEIGHT));
-        double ext = capture.get(Videoio.CAP_PROP_FOURCC);
-        Debug.Log("CAP_PROP_FOURCC: " + (char)((int)ext & 0XFF) + (char)(((int)ext & 0XFF00) >> 8) + (char)(((int)ext & 0XFF0000) >> 16) + (char)(((int)ext & 0XFF000000) >> 24));
+        //Debug.Log("CAP_PROP_FORMAT: " + capture.get(Videoio.CAP_PROP_FORMAT));
+        //Debug.Log("CAP_PROP_POS_MSEC: " + capture.get(Videoio.CAP_PROP_POS_MSEC));
+        //Debug.Log("CAP_PROP_POS_FRAMES: " + capture.get(Videoio.CAP_PROP_POS_FRAMES));
+        //Debug.Log("CAP_PROP_POS_AVI_RATIO: " + capture.get(Videoio.CAP_PROP_POS_AVI_RATIO));
+        //Debug.Log("CAP_PROP_FRAME_COUNT: " + capture.get(Videoio.CAP_PROP_FRAME_COUNT));
+        //Debug.Log("CAP_PROP_FPS: " + capture.get(Videoio.CAP_PROP_FPS));
+        //Debug.Log("CAP_PROP_FRAME_WIDTH: " + capture.get(Videoio.CAP_PROP_FRAME_WIDTH));
+        //Debug.Log("CAP_PROP_FRAME_HEIGHT: " + capture.get(Videoio.CAP_PROP_FRAME_HEIGHT));
+        //double ext = capture.get(Videoio.CAP_PROP_FOURCC);
+        //Debug.Log("CAP_PROP_FOURCC: " + (char)((int)ext & 0XFF) + (char)(((int)ext & 0XFF00) >> 8) + (char)(((int)ext & 0XFF0000) >> 16) + (char)(((int)ext & 0XFF000000) >> 24));
 
+        hogDescriptor = new HOGDescriptor();
+        hogDescriptor.setSVMDetector(HOGDescriptor.getDefaultPeopleDetector());
+        humans = new MatOfRect();
+        weights = new MatOfDouble();
+        winStride = new Size(8, 8);
 
         capture.grab();
         capture.retrieve(rgbMat);
+        Imgproc.resize(rgbMat, rgbMat, new Size(640, 480));
         int frameWidth = rgbMat.cols();
         int frameHeight = rgbMat.rows();
         Debug.Log("frame width: " + frameWidth + " frame height: " + frameHeight);
@@ -89,6 +101,17 @@ public class VideoUploader : MonoBehaviour
                 capture.retrieve(rgbMat);
 
                 Imgproc.cvtColor(rgbMat, rgbMat, Imgproc.COLOR_BGR2RGB);
+                Imgproc.resize(rgbMat, rgbMat, new Size(640, 480));
+                // detect human
+                hogDescriptor.detectMultiScale(rgbMat, humans, weights,0, winStride);
+
+                // draw boxes
+                OpenCVForUnity.CoreModule.Rect[] rects = humans.toArray();
+                //draw rectangle over all faces
+                for (int i = 0; i < rects.Length; i++)
+                {
+                    Imgproc.rectangle(rgbMat, new Point(rects[i].x, rects[i].y), new Point(rects[i].x + rects[i].width, rects[i].y + rects[i].height), new Scalar(255, 0, 0, 255), 2);
+                }
 
                 Utils.matToTexture2D(rgbMat, texture);
             }
