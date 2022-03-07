@@ -292,6 +292,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   videoFileName: IMG_3127.mp4
+  savePath: img_3127_human_detection.mp4
 --- !u!1 &1137437679
 GameObject:
   m_ObjectHideFlags: 0

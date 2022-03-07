@@ -11,6 +11,7 @@ using UnityEngine.UI;
 
 public class VideoUploader : MonoBehaviour
 {
+    VideoWriter writer;
     VideoCapture capture;
     Mat rgbMat;
     Texture2D texture;
@@ -23,11 +24,24 @@ public class VideoUploader : MonoBehaviour
     private MatOfDouble weights;
     private Size winStride;
 
+    Mat recordingFrameRgbMat;
+    bool isRecording;
+    public string savePath;
+
     // Start is called before the first frame update
     void Start()
     {
         capture = new VideoCapture();
         capture.open(Utils.getFilePath(videoFileName));
+
+        writer = new VideoWriter();
+        writer.open(savePath, VideoWriter.fourcc('D', 'V', 'I', 'X'), 30, new Size(640, 480));
+
+        if (!writer.isOpened())
+        {
+            Debug.LogError("writer.isOpened() false");
+            writer.release();
+        }
 
         Initialize();
     }
@@ -114,8 +128,20 @@ public class VideoUploader : MonoBehaviour
                 }
 
                 Utils.matToTexture2D(rgbMat, texture);
+
+                if (isRecording)
+                {
+                    Imgproc.cvtColor(rgbMat, rgbMat, Imgproc.COLOR_RGB2BGR);
+                    Core.flip(rgbMat, rgbMat, 0);
+                    writer.write(rgbMat);
+                }
             }
         }
+    }
+
+    private void OnPostRender()
+    {
+        
     }
 
     private IEnumerator WaitFrameTime()
@@ -132,7 +158,7 @@ public class VideoUploader : MonoBehaviour
             if (isPlaying)
             {
                 shouldUpdateVideoFrame = true;
-
+                isRecording = true;
                 //prevFrameTickCount = currentFrameTickCount;
                 //currentFrameTickCount = Core.getTickCount();
 
@@ -153,6 +179,12 @@ public class VideoUploader : MonoBehaviour
 
         if (rgbMat != null)
             rgbMat.Dispose();
+
+        if(writer != null && !writer.IsDisposed)
+        {
+            writer.release();
+        }
+        isRecording = false;
     }
 
 }
